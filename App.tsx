@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { InputForm } from './components/InputForm';
 import { OutputDisplay } from './components/OutputDisplay';
@@ -21,8 +20,24 @@ const App: React.FC = () => {
             const result = await generateMarketingContent(inputs);
             setMarketingOutput(result);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'An unknown error occurred.');
-            console.error(err);
+            console.error("Generation failed:", err);
+            
+            let userFriendlyError = "حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى لاحقاً.";
+
+            if (err instanceof Error) {
+                const errorMessage = err.message.toLowerCase();
+                // Check for common API key/authentication errors from the SDK
+                if (errorMessage.includes('api key') || errorMessage.includes('permission denied') || errorMessage.includes('authentication')) {
+                    userFriendlyError = "حدث خطأ في الاتصال. يرجى التأكد من صلاحية مفتاح الواجهة البرمجية (API Key) وأنه مُعد بشكل صحيح.";
+                } else if (errorMessage.includes('invalid json')) {
+                    // This catches parsing or validation errors from our service
+                    userFriendlyError = "فشل في معالجة الرد من النموذج. قد يكون المحتوى المطلوب معقداً جداً. حاول تبسيط طلبك والمحاولة مرة أخرى.";
+                } else if (errorMessage.includes('deadline exceeded') || errorMessage.includes('timeout')) {
+                    userFriendlyError = "استغرقت العملية وقتاً طويلاً جداً. يرجى المحاولة مرة أخرى.";
+                }
+            }
+            
+            setError(userFriendlyError);
         } finally {
             setIsLoading(false);
         }

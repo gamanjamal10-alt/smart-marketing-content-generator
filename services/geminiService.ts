@@ -46,13 +46,8 @@ const systemInstruction = `
 
 
 export const generateMarketingContent = async (inputs: MarketingInput): Promise<MarketingOutput> => {
-    const API_KEY = process.env.API_KEY;
-
-    if (!API_KEY) {
-        throw new Error("API_KEY environment variable is not set.");
-    }
-    
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    // The SDK will handle the case where the API_KEY is missing and throw an appropriate error.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const prompt = `
 الرجاء إنشاء محتوى تسويقي للمنتج التالي بناءً على المعطيات:
@@ -65,32 +60,35 @@ export const generateMarketingContent = async (inputs: MarketingInput): Promise<
 
 قم بتوليد المحتوى المطلوب بصيغة JSON متوافقة مع المخطط (Schema) المحدد.
     `;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-            config: {
-                systemInstruction: systemInstruction,
-                responseMimeType: "application/json",
-                responseSchema: schema,
-                temperature: 0.8,
-                topP: 0.95,
-            }
-        });
-
-        const jsonString = response.text.trim();
-        const parsedJson = JSON.parse(jsonString);
-
-        // Basic validation
-        if (!parsedJson.productDescription || !parsedJson.socialPost || !parsedJson.adHeadline || !Array.isArray(parsedJson.usp) || !Array.isArray(parsedJson.hashtags)) {
-             throw new Error("Invalid JSON structure received from API.");
+    
+    // Let errors from the API call propagate up to the UI component to be handled there.
+    const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+            systemInstruction: systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: schema,
+            temperature: 0.8,
+            topP: 0.95,
         }
+    });
 
-        return parsedJson as MarketingOutput;
-
+    const jsonString = response.text.trim();
+    
+    let parsedJson;
+    try {
+        parsedJson = JSON.parse(jsonString);
     } catch (error) {
-        console.error("Error calling Gemini API:", error);
-        throw new Error("Failed to generate marketing content. Please check the console for more details.");
+        console.error("Failed to parse JSON response from API:", jsonString);
+        // Throw a specific error that the UI can catch and interpret.
+        throw new Error("Invalid JSON structure received from API.");
     }
+
+    // Basic validation to ensure the received object has the expected structure.
+    if (!parsedJson.productDescription || !parsedJson.socialPost || !parsedJson.adHeadline || !Array.isArray(parsedJson.usp) || !Array.isArray(parsedJson.hashtags)) {
+         throw new Error("Invalid JSON structure received from API.");
+    }
+
+    return parsedJson as MarketingOutput;
 };
