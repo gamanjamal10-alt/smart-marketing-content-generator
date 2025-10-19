@@ -1,16 +1,5 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import type { MarketingInput, MarketingOutput } from '../types';
-
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY) {
-    throw new Error("API_KEY environment variable is not set.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
-
-const model = ai.models;
 
 const schema = {
     type: Type.OBJECT,
@@ -57,6 +46,14 @@ const systemInstruction = `
 
 
 export const generateMarketingContent = async (inputs: MarketingInput): Promise<MarketingOutput> => {
+    const API_KEY = process.env.API_KEY;
+
+    if (!API_KEY) {
+        throw new Error("API_KEY environment variable is not set.");
+    }
+    
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
+
     const prompt = `
 الرجاء إنشاء محتوى تسويقي للمنتج التالي بناءً على المعطيات:
 
@@ -70,7 +67,7 @@ export const generateMarketingContent = async (inputs: MarketingInput): Promise<
     `;
 
     try {
-        const response = await model.generateContent({
+        const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
